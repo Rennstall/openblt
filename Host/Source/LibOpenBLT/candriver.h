@@ -42,6 +42,7 @@ extern "C" {
 ****************************************************************************************/
 /** \brief Maximum number of data bytes in a CAN message. */
 #define CAN_MSG_MAX_LEN     (8u)
+#define CAN_FD_MSG_MAX_LEN  (64u)
 
 /** Bit mask that configures a CAN message identifier as 29-bit extended as opposed to
  *  11-bit standard. Whenever this bit is set in the CAN identifier field of tCanMsg, 
@@ -64,7 +65,8 @@ typedef enum
   CAN_BR250K  = 5,                  /**< 250 kbits/sec                                 */
   CAN_BR500K  = 6,                  /**< 500 kbits/sec                                 */
   CAN_BR800K  = 7,                  /**< 800 kbits/sec                                 */
-  CAN_BR1M    = 8                   /**< 1 Mbits/sec                                   */
+  CAN_BR1M    = 8,                  /**< 1 Mbits/sec                                   */ 
+  CANFD_BR1M_2M = 9,                /**< 1 Mbits/sec data, 2 Mbits/sec arbitration     */
 } tCanBaudrate;
 
 /** \brief Layout of a CAN message. Note that \ref CAN_MSG_EXT_ID_MASK can be used to

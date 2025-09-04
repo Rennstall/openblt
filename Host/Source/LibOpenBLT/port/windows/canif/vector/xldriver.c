@@ -63,6 +63,7 @@ static void VectorXlRegisterEvents(tCanEvents const * events);
 static uint32_t VectorXlConvertToRawBitrate(tCanBaudrate baudrate);
 /* CAN event reception thread. */
 static DWORD WINAPI VectorXlReceptionThread(LPVOID pv);
+static void VectorXlConvertToFdConfig(tCanBaudrate baudrate, XLcanFdConf *pCanFdConf);
 
 
 /****************************************************************************************
@@ -251,6 +252,7 @@ static bool VectorXlConnect(void)
   bool           result = true;
   XLstatus       xlStatus;
   XLdriverConfig xlDrvConfig;
+  XLcanFdConf    pCanFdConf;
   char           xlAppName[XL_MAX_LENGTH + 1] = "";
   XLaccess       xlPermissionMask = 0;
   uint32_t       xlBitrate;
@@ -324,8 +326,17 @@ static bool VectorXlConnect(void)
       /* Determine the requested bitrate in bits/second. */
       xlBitrate = VectorXlConvertToRawBitrate(vectorXlSettings.baudrate);
       /* Attempt to configure the communication speed. */
-      xlStatus = xlCanSetChannelBitrate(vectorXlPortHandle, vectorXLChannelMask,
-                                        xlBitrate);
+      if (vectorXlSettings.baudrate <= CAN_BR500K) {
+        xlStatus = xlCanSetChannelBitrate(vectorXlPortHandle, vectorXLChannelMask,
+                                          xlBitrate);
+      } else {
+        /* Configure CAN FD bitrate. Note that we only support one specific CAN FD
+         * configuration, which is 1 Mbits/sec arbitration and 2 Mbits/sec data.
+         */
+        VectorXlConvertToFdConfig(vectorXlSettings.baudrate, &pCanFdConf);
+        xlStatus = xlCanFdSetConfiguration(vectorXlPortHandle, vectorXLChannelMask,
+                                          &pCanFdConf);
+      }
       /* Evaluate the result. */
       if (xlStatus != XL_SUCCESS)
       {
@@ -720,6 +731,7 @@ static uint32_t VectorXlConvertToRawBitrate(tCanBaudrate baudrate)
       result = 800000;
       break;
     case CAN_BR1M:
+    case CANFD_BR1M_2M:
       result = 1000000;
       break;
     default:
@@ -730,6 +742,26 @@ static uint32_t VectorXlConvertToRawBitrate(tCanBaudrate baudrate)
   /* Give the result back to the caller. */
   return result;
 } /*** end of VectorXlConvertToRawBitrate ***/
+
+
+/************************************************************************************//**
+** \brief     CAN FD configuration conversion utility function.
+** \param     baudrate Baudrate enumarated type.
+** \param     pCanFdConf Pointer to XLcanFdConf structure to populate.
+** \return    None.
+**
+****************************************************************************************/
+static void VectorXlConvertToFdConfig(tCanBaudrate baudrate, XLcanFdConf *pCanFdConf) {
+  // assert(baudrate == CANFD_BR1M_2M);
+  pCanFdConf->arbitrationBitRate = 1000000;
+  pCanFdConf->sjwAbr = 20;
+  pCanFdConf->tseg1Abr = 59;
+  pCanFdConf->tseg2Abr = 20;
+  pCanFdConf->dataBitRate = 2000000;
+  pCanFdConf->sjwDbr = 10;
+  pCanFdConf->tseg1Dbr = 29;
+  pCanFdConf->tseg2Dbr = 10;
+}
 
 
 /************************************************************************************//**
